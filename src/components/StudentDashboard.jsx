@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getDocs, collection, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
+import { motion } from 'framer-motion';
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -50,7 +51,7 @@ const StudentDashboard = () => {
 
     // Group attendance by subject
     records.forEach((record) => {
-      const { subject, presentStudents, absentStudents } = record;
+      const { subject, presentStudents } = record;
 
       if (!attendanceBySubject[subject]) {
         attendanceBySubject[subject] = {
@@ -87,50 +88,111 @@ const StudentDashboard = () => {
   }, [userData.class, userData.rollno]);
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-      <h2 className="text-3xl font-bold mb-6">Welcome, {userData.name}</h2>
-      <h3 className="text-xl mb-4">Your Attendance Dashboard</h3>
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(to bottom right, #4F46E5, #9333EA)',
+        padding: '2rem',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '1000px',
+          width: '100%',
+          backgroundColor: 'white',
+          padding: '3rem',
+          borderRadius: '24px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: '3rem',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            marginBottom: '2rem',
+            color: '#1F2937',
+          }}
+        >
+          Welcome, {userData?.name}
+        </h2>
 
-      {/* ✅ Subject Attendance Overview */}
-      {subjects.length === 0 ? (
-        <p>Loading subjects...</p>
-      ) : (
-        subjects.map((subject) => (
-          <div key={subject.name} className="mb-8 p-4 border rounded-lg shadow-sm">
-            <h4 className="text-2xl font-semibold mb-4">{subject.name}</h4>
+        <h3
+          style={{
+            fontSize: '2rem',
+            textAlign: 'center',
+            marginBottom: '2rem',
+            color: '#4B5563',
+          }}
+        >
+          Your Attendance Dashboard
+        </h3>
 
-            {attendanceSummary[subject.name] ? (
-              <div>
-                <p>
-                  <strong>Attendance Percentage:</strong>{' '}
-                  {attendanceSummary[subject.name].percentage}%
-                </p>
-                <p>
-                  <strong>Classes Attended:</strong>{' '}
-                  {attendanceSummary[subject.name].attended} /{' '}
-                  {attendanceSummary[subject.name].totalClasses}
-                </p>
+        {subjects.length === 0 ? (
+          <p style={{ textAlign: 'center', fontSize: '1.2rem', color: '#6B7280' }}>
+            Loading subjects...
+          </p>
+        ) : (
+          subjects.map((subject) => (
+            <div
+              key={subject.name}
+              style={{
+                marginBottom: '2rem',
+                padding: '2rem',
+                borderRadius: '16px',
+                border: '2px solid #6366F1',
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+              }}
+            >
+              <h4
+                style={{
+                  fontSize: '2rem',
+                  fontWeight: '600',
+                  marginBottom: '1.5rem',
+                  color: '#374151',
+                }}
+              >
+                {subject.name}
+              </h4>
 
-                {/* ✅ Attendance Record List */}
-                <h5 className="mt-4 mb-2 font-semibold">Attendance History:</h5>
-                <ul>
-                  {attendanceSummary[subject.name].records.map((record, index) => (
-                    <li key={index} className="mb-2">
-                      <strong>Date:</strong> {record.date} -{' '}
-                      {record.presentStudents.includes(userData.rollno)
-                        ? 'Present'
-                        : 'Absent'}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p>No attendance records available for this subject.</p>
-            )}
-          </div>
-        ))
-      )}
-    </div>
+              {attendanceSummary[subject.name] ? (
+                <div>
+                  <p style={{color:'black'}}><strong>Attendance Percentage:</strong> {attendanceSummary[subject.name].percentage}%</p>
+                  <p style={{color:'black'}}><strong>Classes Attended:</strong> {attendanceSummary[subject.name].attended} / {attendanceSummary[subject.name].totalClasses}</p>
+
+                  <h5
+                    style={{
+                      marginTop: '1.5rem',
+                      marginBottom: '1rem',
+                      fontWeight: 'bold',
+                      color: '#1F2937',
+                    }}
+                  >
+                    Attendance History:
+                  </h5>
+
+                  <ul style={{color:'black'}}>
+                    {attendanceSummary[subject.name].records.map((record, index) => (
+                      <li key={index} style={{ marginBottom: '0.5rem' }}>
+                        <strong>Date:</strong> {record.date} - {record.presentStudents.includes(userData.rollno) ? '✅ Present' : '❌ Absent'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p style={{color:'black'}}>No attendance records available for this subject.</p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </motion.div>
   );
 };
 

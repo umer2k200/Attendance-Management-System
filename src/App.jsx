@@ -5,7 +5,6 @@ import ClassSelection from './components/ClassSelection';
 import AttendanceMarking from './components/AttendanceMarking';
 import StudentDashboard from './components/StudentDashboard';
 import AdminReports from './components/AdminReports';
-import ExportReport from './components/ExportReport';
 import Login from './components/Login';
 
 function App() {

@@ -1,7 +1,36 @@
 // src/components/ExportReport.jsx
-import jsPDF from 'jspdf';  // ✅ Correct import
-import autoTable from 'jspdf-autotable';  // ✅ Ensure this is imported correctly
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { motion } from 'framer-motion';
+
+const styles = {
+  container: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '20px',
+    marginTop: '40px',
+  },
+  button: {
+    padding: '14px 28px',
+    fontSize: '16px',
+    fontWeight: '600',
+    borderRadius: '12px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'transform 0.2s ease, box-shadow 0.3s ease',
+    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+  },
+  pdfButton: {
+    background: 'linear-gradient(to right, #10B981, #34D399)',
+    color: 'white',
+  },
+  excelButton: {
+    background: 'linear-gradient(to right, #F59E0B, #FBBF24)',
+    color: 'white',
+  },
+};
 
 const ExportReport = ({ attendanceData }) => {
   // Export as PDF
@@ -32,19 +61,24 @@ const ExportReport = ({ attendanceData }) => {
   };
 
   return (
-    <div className="mt-6">
-      <button
+    <div style={styles.container}>
+      <motion.button
         onClick={exportToPDF}
-        className="bg-green-500 text-white px-4 py-2 rounded-lg mr-4"
+        style={{ ...styles.button, ...styles.pdfButton }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
       >
-        Export to PDF
-      </button>
-      <button
+        📄 Export to PDF
+      </motion.button>
+
+      <motion.button
         onClick={exportToExcel}
-        className="bg-yellow-500 text-white px-4 py-2 rounded-lg"
+        style={{ ...styles.button, ...styles.excelButton }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
       >
-        Export to Excel
-      </button>
+        📊 Export to Excel
+      </motion.button>
     </div>
   );
 };

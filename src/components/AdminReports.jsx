@@ -3,17 +3,97 @@ import { useState, useEffect } from 'react';
 import { getDocs, collection, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import ExportReport from './ExportReport';
+import { color, motion } from 'framer-motion';
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+    padding: '20px',
+  },
+  formWrapper: {
+    maxWidth: '1100px',
+    width: '100%',
+    background: '#ffffff',
+    padding: '50px 40px',
+    borderRadius: '24px',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+  },
+  header: {
+    fontSize: '42px',
+    fontWeight: '800',
+    color: '#2d3748',
+    marginBottom: '20px',
+    letterSpacing: '1.5px',
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: '20px',
+  },
+  label: {
+    display: 'block',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#4a5568',
+    marginBottom: '8px',
+  },
+  select: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '12px',
+    border: '2px solid #cbd5e0',
+    outline: 'none',
+    fontSize: '16px',
+    transition: 'border-color 0.3s',
+  },
+  button: {
+    width: '100%',
+    padding: '16px',
+    fontSize: '18px',
+    fontWeight: '600',
+    borderRadius: '12px',
+    color: '#fff',
+    background: 'linear-gradient(to right, #4f46e5, #7c3aed)',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'transform 0.2s',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginTop: '40px',
+    marginBottom: '40px'
+  },
+  tableHeader: {
+    background: '#7c3aed',
+    color: '#fff',
+  },
+  tableCell: {
+    padding: '12px',
+    border: '1px solid #cbd5e0',
+    textAlign: 'center',
+    color: '#2d3748',
+  },
+};
+
 
 const AdminReports = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [filteredSubjects, setFilteredSubjects] = useState([]);
+  const [attendanceDates, setAttendanceDates] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ✅ Utility to format date to YYYY-MM-DD
+  const formatDate = (date) => date.toISOString().split('T')[0];
 
   // ✅ Fetch available classes and subjects
   useEffect(() => {
@@ -40,11 +120,10 @@ const AdminReports = () => {
     if (selectedClass) {
       const matchedClass = classes.find((cls) => cls.classId === selectedClass);
       if (matchedClass && Array.isArray(matchedClass.subject)) {
-        // Ensure subjects exist and are unique
+        // Filter only subjects of the selected class
         const relatedSubjects = subjects.filter((subject) =>
           matchedClass.subject.includes(subject.name)
         );
-        // Ensure unique subjects only
         const uniqueSubjects = Array.from(new Set(relatedSubjects.map((sub) => sub.name))).map(
           (name) => relatedSubjects.find((sub) => sub.name === name)
         );
@@ -56,6 +135,45 @@ const AdminReports = () => {
       setFilteredSubjects([]);
     }
   }, [selectedClass, classes, subjects]);
+
+  // ✅ Fetch attendance records and set dynamic date range
+  const fetchAttendanceDateRange = async () => {
+    try {
+      if (!selectedClass || !selectedSubject) return;
+
+      const attendanceRef = collection(db, 'attendance');
+      const attendanceQuery = query(
+        attendanceRef,
+        where('class', '==', selectedClass),
+        where('subject', '==', selectedSubject)
+      );
+
+      const snapshot = await getDocs(attendanceQuery);
+      if (!snapshot.empty) {
+        const dates = snapshot.docs.map((doc) => new Date(doc.data().date));
+
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+
+        setStartDate(formatDate(minDate));
+        setEndDate(formatDate(maxDate));
+        setAttendanceDates(dates.map((date) => formatDate(date)));
+      } else {
+        setStartDate('');
+        setEndDate('');
+        setAttendanceDates([]);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance dates:', error);
+    }
+  };
+
+  // ✅ Trigger attendance date range fetch
+  useEffect(() => {
+    if (selectedClass && selectedSubject) {
+      fetchAttendanceDateRange();
+    }
+  }, [selectedClass, selectedSubject]);
 
   // ✅ Fetch Attendance Data based on filters
   const fetchAttendanceReports = async () => {
@@ -95,20 +213,22 @@ const AdminReports = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg">
-      <h2 className="text-3xl font-bold mb-6">Admin Attendance Reports</h2>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.container}>
+    <div style={styles.formWrapper}>
+      <h2 style={styles.header}>Admin Attendance Reports</h2>
 
       {/* ✅ Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label>Class:</label>
+      <div >
+        {/* Class Dropdown */}
+        <div style={styles.inputContainer}>
+          <label style={styles.label}>Class:</label>
           <select
             value={selectedClass}
             onChange={(e) => {
               setSelectedClass(e.target.value);
               setSelectedSubject('');
             }}
-            className="w-full p-2 border rounded-lg"
+            style={styles.select}
           >
             <option value="">Select Class</option>
             {classes.map((classItem) => (
@@ -119,12 +239,14 @@ const AdminReports = () => {
           </select>
         </div>
 
-        <div>
-          <label>Subject:</label>
+        {/* Subject Dropdown */}
+        <div style={styles.inputContainer}>
+          <label style={styles.label}>Subject:</label>
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="w-full p-2 border rounded-lg"
+            style={styles.select}
+            disabled={!filteredSubjects.length}
           >
             <option value="">Select Subject</option>
             {filteredSubjects.map((subject) => (
@@ -135,53 +257,60 @@ const AdminReports = () => {
           </select>
         </div>
 
-        <div>
-          <label>Start Date:</label>
+        {/* Start Date */}
+        <div style={styles.inputContainer}>
+          <label style={styles.label}>Start Date:</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full p-2 border rounded-lg"
+            style={styles.select}
+            disabled={!startDate}
           />
         </div>
 
-        <div>
-          <label>End Date:</label>
+        {/* End Date */}
+        <div style={styles.inputContainer}>
+          <label style={styles.label}>End Date:</label>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full p-2 border rounded-lg"
+            style={styles.select}
+            disabled={!endDate}
           />
         </div>
       </div>
 
       {/* ✅ Fetch Reports Button */}
-      <button
+      {/* <button
         onClick={fetchAttendanceReports}
         className="bg-blue-500 text-white px-6 py-2 rounded-lg mb-6"
       >
         {loading ? 'Generating Report...' : 'Generate Report'}
-      </button>
+      </button> */}
+      <motion.button style={styles.button} onClick={fetchAttendanceReports} whileHover={{ scale: 1.05 }}>
+          {loading ? 'Generating Report...' : 'Generate Report'}
+        </motion.button>
 
       {/* ✅ Attendance Report Table */}
       {attendanceData.length > 0 ? (
         <div>
           <h3 className="text-xl font-semibold mb-4">Attendance Report:</h3>
-          <table className="w-full border-collapse border border-gray-300">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="p-2 border">Date</th>
-                <th className="p-2 border">Present Students</th>
-                <th className="p-2 border">Absent Students</th>
+          <table style={styles.table}>
+            <thead style={styles.tableHeader}>
+              <tr >
+                <th style={styles.tableCell}>Date</th>
+                <th style={styles.tableCell}>Present Students</th>
+                <th style={styles.tableCell}>Absent Students</th>
               </tr>
             </thead>
             <tbody>
               {attendanceData.map((record, index) => (
                 <tr key={index}>
-                  <td className="p-2 border">{record.date}</td>
-                  <td className="p-2 border">{record.presentStudents.join(', ')}</td>
-                  <td className="p-2 border">{record.absentStudents.join(', ')}</td>
+                  <td style={styles.tableCell}>{record.date}</td>
+                  <td cstyle={styles.tableCell}>{record.presentStudents.join(', ')}</td>
+                  <td style={styles.tableCell}>{record.absentStudents.join(', ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -194,6 +323,7 @@ const AdminReports = () => {
         <p>No attendance records found.</p>
       )}
     </div>
+    </motion.div>
   );
 };
 
