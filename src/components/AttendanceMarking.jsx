@@ -6,12 +6,12 @@ import { db } from '../firebase/firebase';
 
 const AttendanceMarking = () => {
   const location = useLocation();
-  const { classItem } = location.state || {};
+  const { classItem, subjectItem } = location.state || {};
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
   const [attendanceDates, setAttendanceDates] = useState([]);
 
-  // ✅ Fix the date issue (Ensure today’s date is correct)
+  // ✅ Ensure the date is formatted correctly (YYYY-MM-DD)
   const getTodayDate = () => {
     const today = new Date();
     return today.toLocaleDateString('en-CA'); // Outputs YYYY-MM-DD (compatible with Firestore)
@@ -20,7 +20,7 @@ const AttendanceMarking = () => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [isNewRecord, setIsNewRecord] = useState(true);
 
-  console.log('Received classItem:', classItem);
+  console.log('Class & Subject:', classItem, subjectItem);
 
   // ✅ Utility function: Convert Firestore timestamp to YYYY-MM-DD
   const formatDate = (timestamp) => {
@@ -30,7 +30,7 @@ const AttendanceMarking = () => {
     return timestamp; // If already a valid string, return as is.
   };
 
-  // ✅ Fetch Data (Students and Attendance)
+  // ✅ Fetch Students and Attendance Dates
   const fetchData = async () => {
     try {
       // Fetch students for the selected class
@@ -42,7 +42,7 @@ const AttendanceMarking = () => {
         const studentList = studentSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setStudents(studentList);
 
-        // Initialize attendance to 'present' by default
+        // Initialize attendance with "present" as default
         const initialAttendance = studentList.reduce((acc, student) => {
           acc[student.rollno] = 'present';
           return acc;
@@ -50,92 +50,92 @@ const AttendanceMarking = () => {
         setAttendance(initialAttendance);
       }
 
-      // Fetch attendance dates for the class
+      // Fetch attendance dates for the class + subject
       const attendanceRef = collection(db, 'attendance');
-      const attendanceQuery = query(attendanceRef, where('class', '==', classItem.classId));
+      const attendanceQuery = query(
+        attendanceRef,
+        where('class', '==', classItem.classId),
+        where('subject', '==', subjectItem.name)
+      );
       const attendanceSnapshot = await getDocs(attendanceQuery);
 
       if (!attendanceSnapshot.empty) {
         const dates = attendanceSnapshot.docs.map((doc) => formatDate(doc.data().date));
         setAttendanceDates(dates);
       }
+
+      // ✅ After fetching students and dates, load today's attendance
+      handleDateChange(selectedDate);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
   };
 
+  // ✅ Fetch Data on Component Mount (Initial Load)
   useEffect(() => {
     fetchData();
-  }, [classItem.classId]);
+  }, [classItem.classId, subjectItem.name]);
 
-  // ✅ Handle Attendance Change
+  // ✅ Handle Attendance Change (Student Present/Absent)
   const handleAttendanceChange = (rollno, status) => {
     setAttendance((prev) => ({ ...prev, [rollno]: status }));
   };
 
-  // ✅ Handle Date Change (Reload Students and Attendance)
+  // ✅ Load Attendance for a Specific Date
   const handleDateChange = async (date) => {
     setSelectedDate(date);
     const isExistingRecord = attendanceDates.includes(date);
     setIsNewRecord(!isExistingRecord);
 
     try {
-      // Fetch students (for consistency after date change)
-      const studentRef = collection(db, 'student');
-      const studentQuery = query(studentRef, where('class', '==', classItem.classId));
-      const studentSnapshot = await getDocs(studentQuery);
+      // Fetch attendance for the current class + subject + date
+      const attendanceRef = collection(db, 'attendance');
+      const attendanceQuery = query(
+        attendanceRef,
+        where('class', '==', classItem.classId),
+        where('subject', '==', subjectItem.name),
+        where('date', '==', date)
+      );
+      const snapshot = await getDocs(attendanceQuery);
 
-      if (!studentSnapshot.empty) {
-        const studentList = studentSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setStudents(studentList);
+      if (!snapshot.empty) {
+        const record = snapshot.docs[0].data();
 
-        // Fetch attendance if record exists
-        if (isExistingRecord) {
-          const attendanceRef = collection(db, 'attendance');
-          const attendanceQuery = query(
-            attendanceRef,
-            where('class', '==', classItem.classId),
-            where('date', '==', date)
-          );
-          const attendanceSnapshot = await getDocs(attendanceQuery);
+        // Sync attendance with the current student list (Handles missing students)
+        const loadedAttendance = students.reduce((acc, student) => {
+          acc[student.rollno] = record.presentStudents.includes(student.rollno) ? 'present' : 'absent';
+          return acc;
+        }, {});
 
-          if (!attendanceSnapshot.empty) {
-            const record = attendanceSnapshot.docs[0].data();
-
-            // Sync attendance with roll numbers
-            const loadedAttendance = studentList.reduce((acc, student) => {
-              acc[student.rollno] = record.presentStudents.includes(student.rollno)
-                ? 'present'
-                : 'absent';
-              return acc;
-            }, {});
-            setAttendance(loadedAttendance);
-          }
-        } else {
-          // Reset attendance for a new date
-          const resetAttendance = studentList.reduce((acc, student) => {
-            acc[student.rollno] = 'present';
-            return acc;
-          }, {});
-          setAttendance(resetAttendance);
-        }
+        setAttendance(loadedAttendance);
+      } else {
+        // If no record exists, reset to default "present"
+        const resetAttendance = students.reduce((acc, student) => {
+          acc[student.rollno] = 'present';
+          return acc;
+        }, {});
+        setAttendance(resetAttendance);
       }
     } catch (error) {
       console.error('Error fetching attendance record:', error);
     }
   };
 
-  // ✅ Save or Update Attendance
+  // ✅ Save or Update Attendance Record
   const saveAttendance = async () => {
     try {
+      // Get present and absent students by roll numbers
       const presentStudents = Object.keys(attendance).filter((rollno) => attendance[rollno] === 'present');
       const absentStudents = Object.keys(attendance).filter((rollno) => attendance[rollno] === 'absent');
 
+      // Create a unique document ID for each class + subject + date
       const attendanceRef = collection(db, 'attendance');
-      const recordRef = doc(attendanceRef, `${classItem.classId}_${selectedDate}`);
+      const recordRef = doc(attendanceRef, `${classItem.classId}_${subjectItem.name}_${selectedDate}`);
 
+      // Save or update the attendance record
       await setDoc(recordRef, {
         class: classItem.classId,
+        subject: subjectItem.name,
         date: selectedDate,
         presentStudents,
         absentStudents,
@@ -143,6 +143,7 @@ const AttendanceMarking = () => {
 
       alert(isNewRecord ? 'Attendance saved successfully!' : 'Attendance updated successfully!');
 
+      // Update attendance dates if it's a new record
       if (isNewRecord) {
         setAttendanceDates((prevDates) => [...prevDates, selectedDate]);
         setIsNewRecord(false);
@@ -155,7 +156,9 @@ const AttendanceMarking = () => {
 
   return (
     <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg relative">
-      <h2 className="text-2xl font-bold mb-6">Attendance for {classItem.classId}</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        Attendance for {classItem.classId} - {subjectItem.name}
+      </h2>
 
       {/* ✅ Date Dropdown */}
       <div className="absolute top-8 right-8">
@@ -191,11 +194,8 @@ const AttendanceMarking = () => {
         ))}
       </ul>
 
-      {/* ✅ Save or Update Button */}
-      <button
-        onClick={saveAttendance}
-        className="mt-6 bg-green-500 text-white px-4 py-2 rounded-lg"
-      >
+      {/* ✅ Save/Update Button */}
+      <button onClick={saveAttendance} className="mt-6 bg-green-500 text-white px-4 py-2 rounded-lg">
         {isNewRecord ? 'Save Attendance' : 'Update Attendance'}
       </button>
     </div>

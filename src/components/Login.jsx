@@ -2,15 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {  getDocs, collection, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
-import ClassSelection from '../components/ClassSelection'
-// import AdminReports from '../components/AdminReports'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-// import { StudentDashboard } from '../components/StudentDashboard';
+
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState('S');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -24,8 +21,8 @@ const Login = () => {
         return;
       }
       if (role === 'admin') {
-        if(email === '123' && password === '123'){
-          navigate('/AdminReports');
+        if(email === 'admin@gmail.com' && password === '123'){
+          navigate('/admin-reports');
         }
       }
       if (role === 'student') {
