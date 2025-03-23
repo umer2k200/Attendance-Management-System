@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // src/components/StudentDashboard.jsx
 import { useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -197,3 +198,13 @@ const StudentDashboard = () => {
 };
 
 export default StudentDashboard;
+=======
+
+const StudentDashboard = () => {
+    return(
+        <div>Student Dashboard</div>
+    );
+};
+
+export default StudentDashboard;
+>>>>>>> c06f058045c4bc50a4203c0901298157c343913e

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // src/components/AdminReports.jsx
 import { useState, useEffect } from 'react';
 import { getDocs, collection, query, where } from 'firebase/firestore';
@@ -328,3 +329,13 @@ const AdminReports = () => {
 };
 
 export default AdminReports;
+=======
+
+const AdminReports = () => {
+    return(
+        <div>class selection</div>
+    );
+};
+
+export default AdminReports;
+>>>>>>> c06f058045c4bc50a4203c0901298157c343913e
